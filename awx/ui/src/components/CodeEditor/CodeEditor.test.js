@@ -11,6 +11,7 @@ jest.mock('ace-builds/src-noconflict/mode-javascript', () => ({}));
 jest.mock('ace-builds/src-noconflict/mode-yaml', () => ({}));
 jest.mock('ace-builds/src-noconflict/mode-django', () => ({}));
 jest.mock('ace-builds/src-noconflict/theme-twilight', () => ({}));
+jest.mock('ace-builds/src-noconflict/ext-searchbox', () => ({}));
 
 // Mock react-ace so the controlled props CodeEditor passes through
 // (mode/value/setOptions/onChange) are observable. Under jsdom the real
@@ -22,7 +23,16 @@ jest.mock('react-ace', () => {
   // class component so CodeEditor's ref (editor.current.refEditor) resolves
   class AceMock extends ReactMock.Component {
     render() {
-      const { mode, value, onChange, setOptions, name } = this.props;
+      const {
+        mode,
+        value,
+        onChange,
+        setOptions,
+        name,
+        height,
+        minLines,
+        maxLines,
+      } = this.props;
       return ReactMock.createElement(
         'div',
         {
@@ -33,6 +43,9 @@ jest.mock('react-ace', () => {
         ReactMock.createElement('textarea', {
           'data-testid': 'ace-editor',
           'data-mode': mode,
+          'data-height': height,
+          'data-min-lines': minLines,
+          'data-max-lines': maxLines,
           name,
           value,
           readOnly: !!(setOptions && setOptions.readOnly),
@@ -97,5 +110,44 @@ describe('CodeEditor', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  describe('height', () => {
+    // one row is 24px, plus 8px for the margins above and below
+    it('is a fixed number of rows by default', () => {
+      renderWithContexts(<CodeEditor id="ed" mode="yaml" value="a: 1" />);
+      const editor = screen.getByTestId('ace-editor');
+      expect(editor).toHaveAttribute('data-height', '152px');
+      expect(editor).not.toHaveAttribute('data-min-lines');
+      expect(editor).not.toHaveAttribute('data-max-lines');
+    });
+
+    it('lets ace size the box to the content in auto mode, never below minRows', () => {
+      renderWithContexts(
+        <CodeEditor id="ed" mode="yaml" value="a: 1" rows="auto" minRows={4} />
+      );
+      const editor = screen.getByTestId('ace-editor');
+      expect(editor).toHaveAttribute('data-height', 'auto');
+      expect(editor).toHaveAttribute('data-min-lines', '4');
+      // capped by default, so a long value cannot grow the editor without bound
+      expect(editor).toHaveAttribute('data-max-lines', '50');
+    });
+
+    it('caps the auto height at maxRows', () => {
+      renderWithContexts(
+        <CodeEditor
+          id="ed"
+          mode="yaml"
+          value="a: 1"
+          rows="auto"
+          minRows={4}
+          maxRows={12}
+        />
+      );
+      expect(screen.getByTestId('ace-editor')).toHaveAttribute(
+        'data-max-lines',
+        '12'
+      );
+    });
   });
 });
