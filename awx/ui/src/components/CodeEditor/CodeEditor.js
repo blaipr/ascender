@@ -6,6 +6,11 @@ import 'ace-builds/src-noconflict/mode-javascript';
 import 'ace-builds/src-noconflict/mode-yaml';
 import 'ace-builds/src-noconflict/mode-django';
 import 'ace-builds/src-noconflict/theme-twilight';
+// Ctrl-F asks ace for its search box, which ace fetches through its own module
+// loader at runtime. That loader resolves nothing under a bundler, so the fetch
+// lands on the dev server's fallback and the callback runs with an undefined
+// module. Importing the extension registers it up front instead.
+import 'ace-builds/src-noconflict/ext-searchbox';
 
 import { useLingui } from '@lingui/react/macro';
 

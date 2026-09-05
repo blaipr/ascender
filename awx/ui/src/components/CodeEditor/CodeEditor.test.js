@@ -11,6 +11,7 @@ jest.mock('ace-builds/src-noconflict/mode-javascript', () => ({}));
 jest.mock('ace-builds/src-noconflict/mode-yaml', () => ({}));
 jest.mock('ace-builds/src-noconflict/mode-django', () => ({}));
 jest.mock('ace-builds/src-noconflict/theme-twilight', () => ({}));
+jest.mock('ace-builds/src-noconflict/ext-searchbox', () => ({}));
 
 // Mock react-ace so the controlled props CodeEditor passes through
 // (mode/value/setOptions/onChange) are observable. Under jsdom the real
