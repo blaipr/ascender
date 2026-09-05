@@ -15,6 +15,12 @@ import debounce from 'util/debounce';
 const LINE_HEIGHT = 24;
 // the scroll margins below: 4px above the first line and 4px below the last
 const PADDING = 8;
+// The ceiling on the auto height. Ace renders every row it sizes itself to, so
+// an uncapped editor builds a line of DOM per line of content: a host's facts
+// run to thousands, which costs seconds to paint and lags every scroll after.
+// Fifty rows is about what the 90vh this replaced allowed, and it holds the
+// render cost flat however long the value is. The rest scrolls.
+const MAX_ROWS = 50;
 
 const FocusWrapper = styled.div`
   && + .keyboard-help-text {
@@ -114,6 +120,7 @@ function CodeEditor({
   hasErrors = false,
   rows = 6,
   minRows = 1,
+  maxRows = MAX_ROWS,
   className = '',
 }) {
   const { t } = useLingui();
@@ -167,10 +174,10 @@ function CodeEditor({
   };
 
   // 'auto' lets ace size the box from its own measured line height, one line
-  // per row and never below minRows, so a short value still reads as an editor
-  // and a long one shows all of itself. Computing the height here from a fixed
-  // line height leaves the difference as a gap under the last line wherever
-  // the font renders lines shorter than that.
+  // per row, never below minRows and never above maxRows, so a short value
+  // still reads as an editor and a long one shows all of itself. Computing the
+  // height here from a fixed line height leaves the difference as a gap under
+  // the last line wherever the font renders lines shorter than that.
   const isAuto = rows === 'auto';
   const height = isAuto ? 'auto' : `${rows * LINE_HEIGHT + PADDING}px`;
 
@@ -191,7 +198,7 @@ function CodeEditor({
           width="100%"
           height={height}
           minLines={isAuto ? minRows : undefined}
-          maxLines={isAuto ? Infinity : undefined}
+          maxLines={isAuto ? maxRows : undefined}
           // the breathing room above the first and below the last line. Ace's
           // own margin rather than CSS padding on the scroller, so that the
           // auto-height above accounts for it.

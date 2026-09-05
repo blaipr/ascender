@@ -128,7 +128,25 @@ describe('CodeEditor', () => {
       const editor = screen.getByTestId('ace-editor');
       expect(editor).toHaveAttribute('data-height', 'auto');
       expect(editor).toHaveAttribute('data-min-lines', '4');
-      expect(editor).toHaveAttribute('data-max-lines', 'Infinity');
+      // capped by default, so a long value cannot grow the editor without bound
+      expect(editor).toHaveAttribute('data-max-lines', '50');
+    });
+
+    it('caps the auto height at maxRows', () => {
+      renderWithContexts(
+        <CodeEditor
+          id="ed"
+          mode="yaml"
+          value="a: 1"
+          rows="auto"
+          minRows={4}
+          maxRows={12}
+        />
+      );
+      expect(screen.getByTestId('ace-editor')).toHaveAttribute(
+        'data-max-lines',
+        '12'
+      );
     });
   });
 });
