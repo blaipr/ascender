@@ -44,6 +44,13 @@ from django.db import connection
 from django.db.models.sql import InsertQuery
 from django.utils.timezone import now
 
+# Workers are forked after setup_django() and rely on inheriting the loaded app
+# registry, which only the fork start method provides. Python 3.14 changed the
+# Linux default to forkserver, where the child re-imports and raises
+# AppRegistryNotReady, so the context is pinned here as it is in
+# awx/main/dispatch/pool.py.
+_mp_ctx = multiprocessing.get_context('fork')
+
 db = json.loads(
     subprocess.check_output(
         ['awx-manage', 'shell', '-c', 'import json; from django.conf import settings; print(json.dumps({"DATABASES": settings.DATABASES}))']
@@ -232,7 +239,7 @@ def generate_events(events, job, time_delta):
         num_events = events
 
     for i in range(num_procs):
-        p = multiprocessing.Process(target=firehose, args=(job, num_events, created_stamp, modified_stamp))
+        p = _mp_ctx.Process(target=firehose, args=(job, num_events, created_stamp, modified_stamp))
         p.daemon = True
         workers.append(p)
 
@@ -326,7 +333,7 @@ if __name__ == '__main__':
         for indexname, indexdef in indexes:
             if indexname == 'main_jobevent_pkey_new':  # Created by the constraint
                 continue
-            p = multiprocessing.Process(target=cleanup, args=(indexdef,))
+            p = _mp_ctx.Process(target=cleanup, args=(indexdef,))
             p.daemon = True
             workers.append(p)
 
