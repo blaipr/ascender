@@ -6,6 +6,11 @@ import 'ace-builds/src-noconflict/mode-javascript';
 import 'ace-builds/src-noconflict/mode-yaml';
 import 'ace-builds/src-noconflict/mode-django';
 import 'ace-builds/src-noconflict/theme-twilight';
+// Ctrl-F asks ace for its search box, which ace fetches through its own module
+// loader at runtime. That loader resolves nothing under a bundler, so the fetch
+// lands on the dev server's fallback and the callback runs with an undefined
+// module. Importing the extension registers it up front instead.
+import 'ace-builds/src-noconflict/ext-searchbox';
 
 import { useLingui } from '@lingui/react/macro';
 
@@ -13,7 +18,14 @@ import styled from 'styled-components';
 import debounce from 'util/debounce';
 
 const LINE_HEIGHT = 24;
-const PADDING = 12;
+// the scroll margins below: 4px above the first line and 4px below the last
+const PADDING = 8;
+// The ceiling on the auto height. Ace renders every row it sizes itself to, so
+// an uncapped editor builds a line of DOM per line of content: a host's facts
+// run to thousands, which costs seconds to paint and lags every scroll after.
+// Fifty rows is about what the 90vh this replaced allowed, and it holds the
+// render cost flat however long the value is. The rest scrolls.
+const MAX_ROWS = 50;
 
 const FocusWrapper = styled.div`
   && + .keyboard-help-text {
@@ -32,7 +44,12 @@ const FocusWrapper = styled.div`
 
 const AceEditor = styled(ReactAce)`
   font-family: var(--pf-t--global--font--family--mono, monospace);
-  max-height: 90vh;
+  /* The height, ours or ace's, is the content: lines plus the scroll margins.
+     Content-box keeps the border from eating into the bottom margin, and the
+     width then has to come from block layout rather than react-ace's inline
+     100%, which would overflow by the border. */
+  box-sizing: content-box;
+  width: auto !important;
 
   & .ace_marker-layer .ace_active-line {
     background: var(--pf-v6-global--BorderColor--300) !important;
@@ -41,11 +58,6 @@ const AceEditor = styled(ReactAce)`
   & .ace_gutter {
     background: var(--pf-v6-global--BackgroundColor--200);
     color: var(--pf-v6-global--Color--200);
-  }
-
-  & .ace_scroller {
-    padding-top: 4px;
-    padding-bottom: 4px;
   }
 
   & .ace_scrollbar {
@@ -112,7 +124,8 @@ function CodeEditor({
   readOnly = false,
   hasErrors = false,
   rows = 6,
-  fullHeight = false,
+  minRows = 1,
+  maxRows = MAX_ROWS,
   className = '',
 }) {
   const { t } = useLingui();
@@ -165,8 +178,13 @@ function CodeEditor({
     json: 'json',
   };
 
-  const numRows = rows === 'auto' ? value.split('\n').length : rows;
-  const height = fullHeight ? '50vh' : `${numRows * LINE_HEIGHT + PADDING}px`;
+  // 'auto' lets ace size the box from its own measured line height, one line
+  // per row, never below minRows and never above maxRows, so a short value
+  // still reads as an editor and a long one shows all of itself. Computing the
+  // height here from a fixed line height leaves the difference as a gap under
+  // the last line wherever the font renders lines shorter than that.
+  const isAuto = rows === 'auto';
+  const height = isAuto ? 'auto' : `${rows * LINE_HEIGHT + PADDING}px`;
 
   return (
     <>
@@ -184,6 +202,12 @@ function CodeEditor({
           fontSize={16}
           width="100%"
           height={height}
+          minLines={isAuto ? minRows : undefined}
+          maxLines={isAuto ? maxRows : undefined}
+          // the breathing room above the first and below the last line. Ace's
+          // own margin rather than CSS padding on the scroller, so that the
+          // auto-height above accounts for it.
+          scrollMargin={[4, 4, 0, 0]}
           hasErrors={hasErrors}
           setOptions={{
             readOnly,
