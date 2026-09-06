@@ -87,8 +87,10 @@ def test_copy_tables_workflow_job_node_query(workflow_job):
 
             # The CSV comes out of a COPY ordered by id, so order the ORM side the
             # same way rather than relying on the model's default ordering.
-            ordered_nodes = workflow_job.workflow_nodes.order_by("id")
-            assert ids == list(ordered_nodes.values_list("id", flat=True))
+            # Evaluated once: values_list() below returns a clone, so leaving this a
+            # queryset would make every ordered_nodes[i] lookup its own LIMIT/OFFSET query.
+            ordered_nodes = list(workflow_job.workflow_nodes.order_by("id"))
+            assert ids == [node.id for node in ordered_nodes]
 
             for index, relationship in zip([7, 8, 9], ["success_nodes", "failure_nodes", "always_nodes"]):
                 for i, l in enumerate(lines):

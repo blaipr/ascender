@@ -47,10 +47,11 @@ DATABASES = {
     }
 }
 
-# The production hasher is deliberately expensive: a single PBKDF2 hash costs
-# roughly 0.7s at Django 6.1's 1,500,000 iterations, and the fixtures create a
-# user for nearly every functional test. Hashing is not what any of them are
-# testing, so use the cheap hasher and get the time back.
+# The production hasher is deliberately expensive: PBKDF2 at Django's default
+# iteration count costs a measurable fraction of a second per call, and the
+# fixtures create a user for nearly every functional test. Hashing is not what
+# any of them are testing, so use the cheap hasher and get the time back. The
+# count rises with most Django releases, so it is not quoted here.
 PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 
 # Use in-memory channel layer for tests to avoid Redis/Valkey connection issues
