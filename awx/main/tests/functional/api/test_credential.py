@@ -97,9 +97,9 @@ def test_create_user_credential_via_user_credentials_list(post, get, alice, cred
 
 
 @pytest.mark.django_db
-def test_create_user_credential_via_credentials_list_xfail(post, alice, bob):
+def test_create_user_credential_via_credentials_list_xfail(post, alice, bob, credentialtype_ssh):
     params = {
-        'credential_type': 1,
+        'credential_type': credentialtype_ssh.id,
         'inputs': {'username': 'someusername'},
         'user': bob.id,
         'name': 'Some name',
@@ -111,9 +111,9 @@ def test_create_user_credential_via_credentials_list_xfail(post, alice, bob):
 
 
 @pytest.mark.django_db
-def test_create_user_credential_via_user_credentials_list_xfail(post, alice, bob):
+def test_create_user_credential_via_user_credentials_list_xfail(post, alice, bob, credentialtype_ssh):
     params = {
-        'credential_type': 1,
+        'credential_type': credentialtype_ssh.id,
         'inputs': {'username': 'someusername'},
         'user': bob.id,
         'name': 'Some name',
@@ -163,9 +163,9 @@ def test_create_team_credential_via_team_credentials_list(post, get, team, org_a
 
 
 @pytest.mark.django_db
-def test_create_team_credential_by_urelated_user_xfail(post, team, organization, alice, team_member):
+def test_create_team_credential_by_urelated_user_xfail(post, team, organization, alice, team_member, credentialtype_ssh):
     params = {
-        'credential_type': 1,
+        'credential_type': credentialtype_ssh.id,
         'inputs': {'username': 'someusername'},
         'team': team.id,
         'organization': organization.id,
@@ -176,10 +176,10 @@ def test_create_team_credential_by_urelated_user_xfail(post, team, organization,
 
 
 @pytest.mark.django_db
-def test_create_team_credential_by_team_member_xfail(post, team, organization, alice, team_member):
+def test_create_team_credential_by_team_member_xfail(post, team, organization, alice, team_member, credentialtype_ssh):
     # Members can't add credentials, only org admins.. for now?
     params = {
-        'credential_type': 1,
+        'credential_type': credentialtype_ssh.id,
         'inputs': {'username': 'someusername'},
         'team': team.id,
         'organization': organization.id,
