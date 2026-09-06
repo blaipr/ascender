@@ -8,9 +8,67 @@ for a developer. When AWX versions that users upgrade from falls out of support 
 is when migration tests can be deleted. This is also a good time to squash. Squashing
 will likely mess with the tests that live here.
 
-The smoke test should be kept in here. The smoke test ensures that our migrations
-continue to work when sqlite is the backing database (vs. the default DB of postgres).
+The smoke test should be kept in here. It replays the whole migration history against
+the database the suite runs on, which is the same PostgreSQL that Ascender deploys on.
 """
+
+
+def _drop_unpartitioned_event_tables():
+    """Drop the five _unpartitioned_* tables, if they are present."""
+    from django.db import connection
+
+    from awx.main.models.events import (
+        UnpartitionedAdHocCommandEvent,
+        UnpartitionedInventoryUpdateEvent,
+        UnpartitionedJobEvent,
+        UnpartitionedProjectUpdateEvent,
+        UnpartitionedSystemJobEvent,
+    )
+
+    if connection.vendor != 'postgresql':
+        return
+
+    models = (
+        UnpartitionedAdHocCommandEvent,
+        UnpartitionedInventoryUpdateEvent,
+        UnpartitionedJobEvent,
+        UnpartitionedProjectUpdateEvent,
+        UnpartitionedSystemJobEvent,
+    )
+    with connection.cursor() as cursor:
+        for model in models:
+            cursor.execute('DROP TABLE IF EXISTS {} CASCADE'.format(connection.ops.quote_name(model._meta.db_table)))
+
+
+@pytest.fixture(autouse=True)
+def drop_orphaned_unpartitioned_tables(transactional_db):
+    """
+    Drop the _unpartitioned_* tables on both sides of a migration replay.
+
+    0144_event_partitions renames each event table to _unpartitioned_<table> with
+    raw SQL, and PostgreSQL leaves a renamed table holding its original index
+    names. Those tables back proxy models, so Django's introspection does not
+    list them, and the migrator's "clean database state" step drops every table
+    it knows about and leaves these five behind. Replaying forward then dies on
+    the first event index it tries to recreate, because the orphan still owns the
+    name:
+
+        relation "main_jobevent_host_id_b03b6059" already exists
+
+    The migrations rebuild these tables on the way forward, so dropping them here
+    costs nothing and lets the replay start genuinely clean. SQLite never needed
+    it: migrate_event_data_sqlite is a no-op, so nothing is ever renamed.
+
+    They have to go again afterwards. The replay recreates them, they carry real
+    foreign keys into main_host, main_job and the other job tables, and
+    PostgreSQL refuses to TRUNCATE a table that a table outside the list still
+    references. Left in place they fail the transactional_db flush with
+    "cannot truncate a table referenced in a foreign key constraint". Depending
+    on transactional_db here is what orders this teardown before that flush.
+    """
+    _drop_unpartitioned_event_tables()
+    yield
+    _drop_unpartitioned_event_tables()
 
 
 @pytest.mark.django_db
