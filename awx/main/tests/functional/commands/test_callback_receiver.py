@@ -124,9 +124,9 @@ class TestCallbackBrokerWorker(TransactionTestCase):
         flush_mock.assert_not_called()
 
     def test_postgres_invalid_NUL_char(self):
-        # In postgres, text fields reject NUL character, 0x00
-        # tests use sqlite3 which will not raise an error
-        # but we can still test that it is sanitized before saving
+        # In postgres, text fields reject NUL character, 0x00. The suite is backed
+        # by postgres, so an unsanitized value would fail on save, but assert the
+        # sanitizing itself rather than leaning on the database to raise.
         worker = self.get_worker()
         kwargs = self.event_create_kwargs()
         events = [InventoryUpdateEvent(uuid=str(uuid4()), stdout="\x00", **kwargs)]

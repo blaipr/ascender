@@ -194,6 +194,9 @@ services:
       POSTGRESQL_PASSWORD: {{ pg_password }}
     volumes:
       - "awx_db_15:/var/lib/pgsql/data"
+      # Grants CREATEDB to the application role so the test suite can build its
+      # own databases. See the script for why it lives in a start hook.
+      - "../../docker-compose/postgres-start:/opt/app-root/src/postgresql-start:Z"
     networks:
       - awx
     ports:

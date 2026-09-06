@@ -1,12 +1,9 @@
 """cleanup_jobs against a real PostgreSQL, with nothing stubbed out.
 
-The default test settings use SQLite, which leaves every PostgreSQL-only
-statement in this command unreachable from a test: _pre_delete_job_host_summaries
-issues ANY(%s) and has_unpartitioned_table reads pg_tables. Both are skipped by
-the SQLite suite in test_cleanup_jobs.py, so the statements themselves are only
-ever asserted as strings against a mock cursor.
-
-Run these with `make test-postgres`.
+test_cleanup_jobs.py covers the command against a mock cursor, which can only
+assert the PostgreSQL-only statements as strings: _pre_delete_job_host_summaries
+issues ANY(%s) and has_unpartitioned_table reads pg_tables. These run them for
+real, and travel with the rest of the suite now that it is backed by PostgreSQL.
 """
 
 import logging
